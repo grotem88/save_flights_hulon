@@ -2,15 +2,15 @@ name: Automated Holon Flight Tracker
 
 on:
   schedule:
-    - cron: '0 * * * *' # מתעורר אוטומטית בכל שעה עגולה
-  workflow_dispatch: # מאפשר הפעלה ידנית בלחיצת כפתור
+    - cron: '*/5 * * * *' # מתעורר אוטומטית בכל 5 דקות
+  workflow_dispatch: # מאפשר הפעלה ידנית מתי שבא לך
 
 jobs:
   collect-data:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-      PYTHONUNBUFFERED: '1' # פקודה זו מאלצת את GitHub להציג את הריצה בזמן אמת!
+      PYTHONUNBUFFERED: '1'
 
     steps:
     - name: Checkout repository
@@ -34,5 +34,5 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email "actions@github.com"
         git add flights_holon.csv
-        git commit -m "Automated flight paths update: $(date -u +'%Y-%m-%d %H:%M:%S') UTC" || exit 0
+        git commit -m "Automated 20s path update: $(date -u +'%Y-%m-%d %H:%M:%S') UTC" || exit 0
         git push
