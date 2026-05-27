@@ -2,14 +2,12 @@ name: Automated Holon Flight Tracker
 
 on:
   schedule:
-    - cron: '0 * * * *' # מריץ את הסקריפט אוטומטית בכל שעה עגולה
-  workflow_dispatch: # מאפשר לך להריץ ידנית מתי שבא לך
+    - cron: '0 * * * *' # מתעורר אוטומטית בכל שעה עגולה
+  workflow_dispatch: # מאפשר הפעלה ידנית בלחיצת כפתור
 
 jobs:
   collect-data:
     runs-on: ubuntu-latest
-    
-    # השורות הבאות פותרות את האזהרה שקיבלת:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
@@ -35,5 +33,5 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email "actions@github.com"
         git add flights_holon.csv
-        git commit -m "Automated data update: $(date -u +'%Y-%m-%d %H:%M:%S') UTC" || exit 0
+        git commit -m "Automated flight paths update: $(date -u +'%Y-%m-%d %H:%M:%S') UTC" || exit 0
         git push
