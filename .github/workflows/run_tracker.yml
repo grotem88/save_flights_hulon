@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+      PYTHONUNBUFFERED: '1' # פקודה זו מאלצת את GitHub להציג את הריצה בזמן אמת!
 
     steps:
     - name: Checkout repository
