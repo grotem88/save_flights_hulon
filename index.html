@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>טומאת כהנים בטיסות — מעקב בזמן אמת</title>
+  <meta name="description" content="מערכת מעקב בזמן אמת לבדיקת טיסות העוברות מעל בית הקברות בחולון — טומאת כהנים" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">טוען מפה ונתוני טיסות...</div>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="header__brand">
+      <span class="header__icon">✡️</span>
+      <div>
+        <div class="header__title">טומאת כהנים בטיסות</div>
+        <div class="header__subtitle">מעקב טיסות מעל בתי העלמין — חולון, ראש העין, ירקון, אלעד ואור יהודה</div>
+      </div>
+    </div>
+    <div class="header__controls">
+      <!-- Status Message -->
+      <div class="status-message" id="statusMessage"></div>
+
+      <div class="live-badge" id="liveBadge">
+        <span class="live-badge__dot" id="connectionDot"></span>
+        <span id="liveBadgeText">LIVE</span>
+      </div>
+      <span class="data-source-label" id="dataSourceLabel">adsb.lol</span>
+      <button class="btn-toggle" id="btnToggleTracking" title="עצור/המשך מעקב">
+        ⏸
+      </button>
+      <button class="btn-toggle" id="btnToggleSidebar" title="הצג/הסתר פאנל">
+        📊
+      </button>
+      <button class="btn-toggle" id="btnToggleLiveTable" title="הצג/הסתר טבלת טיסות חיות">
+        ✈️
+      </button>
+      <button class="btn-toggle" id="btnToggleTable" title="הצג/הסתר טבלת קבצים מיובאים">
+        📋
+      </button>
+    </div>
+  </header>
+
+  <!-- Map -->
+  <div class="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <!-- FR24 Integration Panel -->
+    <div class="fr24-panel">
+      <div class="fr24-panel__title">
+        <span>🌐</span> FlightRadar24
+      </div>
+      <div class="fr24-panel__buttons">
+        <button class="fr24-btn" id="btnOpenFr24">
+          <span>🔗</span> פתח FR24 באזור בית הקברות
+        </button>
+        <button class="fr24-btn fr24-btn--import" id="btnImportData">
+          <span>📥</span> ייבוא נתוני טיסות (CSV / JSON)
+        </button>
+        <button class="fr24-btn fr24-btn--export" id="btnExportData" title="ייצוא נתוני מעקב של הטיסות שנאספו">
+          <span>📤</span> ייצוא נתוני מעקב (CSV)
+        </button>
+        <button class="fr24-btn fr24-btn--clear" id="btnClearHistory" title="איפוס וניקוי נתונים">
+          <span>🗑️</span> איפוס וניקוי נתונים
+        </button>
+        <input type="file" id="importFileInput" accept=".csv,.cvs,.tsv,.json,.txt" multiple style="display:none" />
+      </div>
+      <div class="fr24-panel__hint">
+        קובץ CSV עם עמודות lat, lon (ואופציונלי: callsign, altitude, flight) או JSON
+      </div>
+    </div>
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+      <div class="stats-panel__title">
+        <span>📊</span> סטטיסטיקות
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card__value stat-card__value--accent" id="statActiveFlights">0</div>
+          <div class="stat-card__label">טיסות פעילות באזור</div>
+        </div>
+        <div class="stat-card stat-card--danger">
+          <div class="stat-card__value stat-card__value--danger" id="statOverCemetery">0</div>
+          <div class="stat-card__label">מעל בית הקברות כרגע</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__value stat-card__value--safe" id="statTotalSeen">0</div>
+          <div class="stat-card__label">סה״כ טיסות שנבדקו</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__value stat-card__value--warning" id="statTotalCrossed">0</div>
+          <div class="stat-card__label">סה״כ עברו מעל</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Flight List Panel -->
+    <div class="flight-panel">
+      <div class="flight-panel__header">
+        <div class="flight-panel__title">
+          <span>✈️</span> טיסות באזור
+        </div>
+        <span class="flight-panel__count" id="flightCount">0</span>
+      </div>
+      <div class="flight-list" id="flightList">
+        <div class="flight-list__empty">
+          <div class="flight-list__empty-icon">🔍</div>
+          <div class="flight-list__empty-text">מחפש טיסות באזור...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crossed Flights History -->
+    <div class="flight-panel" id="historyPanel">
+      <div class="flight-panel__header">
+        <div class="flight-panel__title">
+          <span>🔴</span> טיסות שעברו מעל
+        </div>
+      </div>
+      <div class="flight-list" id="historyList">
+        <div class="flight-list__empty">
+          <div class="flight-list__empty-icon">✅</div>
+          <div class="flight-list__empty-text">אין טיסות שעברו מעל בית הקברות</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar Toggle (Mobile) -->
+  <button class="sidebar-toggle" id="sidebarToggle">📊</button>
+
+  <!-- Alert Banner -->
+  <div class="alert-banner" id="alertBanner">
+    <span class="alert-banner__icon">🔴</span>
+    <span class="alert-banner__text" id="alertText">טיסה עוברת מעל בית הקברות!</span>
+    <span class="alert-banner__count" id="alertCount">0</span>
+  </div>
+
+  <!-- Unified Results Panel (Tabbed) -->
+  <div class="results-panel results-panel--hidden" id="unifiedPanel">
+    <div class="results-panel__header">
+      <div class="results-panel__tabs">
+        <button class="tab-btn active" id="tabLiveFlights">
+          ✈️ טיסות חיות באזור
+        </button>
+        <button class="tab-btn" id="tabImportedResults">
+          📋 תוצאות בדיקת קבצים
+        </button>
+      </div>
+      <div class="results-panel__actions">
+        <button class="results-panel__close" id="panelCollapse" title="כווץ/הרחב">▼</button>
+        <button class="results-panel__close" id="panelClose" title="סגור">✕</button>
+      </div>
+    </div>
+
+    <!-- Tab 1: Live Flights Content -->
+    <div class="tab-content" id="contentLiveFlights">
+      <div class="results-table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th class="results-th" style="width: 40px; text-align: center; cursor: pointer;" title="הצג/הסתר את כל הטיסות החיות" onclick="window.__toggleAllLiveFlightsVisibility()">👁️</th>
+              <th class="results-th">מספר טיסה</th>
+              <th class="results-th">חברת תעופה</th>
+              <th class="results-th">שעת טיסה ותאריך</th>
+              <th class="results-th">סטטוס</th>
+              <th class="results-th">נראה לאחרונה</th>
+            </tr>
+          </thead>
+          <tbody id="liveFlightsBody">
+            <tr class="results-row results-row--empty">
+              <td colspan="6" class="results-cell results-cell--empty">ממתין לנתוני טיסות...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Imported Results Content -->
+    <div class="tab-content hidden" id="contentImportedResults">
+      <div class="results-summary" id="resultsSummary"></div>
+      <div class="results-table-wrap" id="resultsTableWrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th class="results-th">#</th>
+              <th class="results-th" style="width: 40px; text-align: center; cursor: pointer;" title="הצג/הסתר את כל הטיסות המיובאות" onclick="window.__toggleAllImportedFlightsVisibility()">👁️</th>
+              <th class="results-th">מספר טיסה</th>
+              <th class="results-th">חברת הטיסה</th>
+              <th class="results-th">מספר נקודות</th>
+              <th class="results-th">שעת המראה</th>
+              <th class="results-th">יעד הטיסה</th>
+              <th class="results-th">סטטוס</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr class="results-row results-row--empty">
+              <td colspan="8" class="results-cell results-cell--empty">
+                📥 ייבא קובץ CSV כדי לראות נתוני טיסות
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
